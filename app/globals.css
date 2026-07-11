@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  border-color: theme("colors.border");
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% -10%, rgba(59, 130, 246, 0.28), transparent 34%),
+    radial-gradient(circle at 86% 8%, rgba(139, 92, 246, 0.22), transparent 30%),
+    radial-gradient(circle at 48% 92%, rgba(16, 185, 129, 0.08), transparent 36%),
+    linear-gradient(180deg, #020617 0%, #0b1120 48%, #020617 100%);
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.055) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at center, black, transparent 78%);
+}
+
+::selection {
+  color: #ffffff;
+  background: rgba(59, 130, 246, 0.55);
+}
+
+@keyframes ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.ticker-track {
+  animation: ticker-scroll 34s linear infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes scan-line {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.premium-grid {
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.09) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.09) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+.ai-glow {
+  animation: pulse-glow 4.8s ease-in-out infinite;
+}
+
+.scan-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+  transform: translateX(-100%);
+  animation: scan-line 5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+
+  .ai-glow,
+  .scan-sheen::after {
+    animation: none;
+  }
+}
+
+.card {
+  @apply bg-surface border border-border rounded-2xl shadow-2xl shadow-black/25 backdrop-blur-xl;
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.label-eyebrow {
+  @apply font-mono text-[11px] tracking-[0.2em] uppercase text-muted;
+}
+
+.glass-panel {
+  @apply border border-border bg-surface/80 backdrop-blur-2xl;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+
+.gradient-text {
+  @apply bg-clip-text text-transparent;
+  background-image: linear-gradient(90deg, #f8fafc, #93c5fd 42%, #c4b5fd 76%, #ffffff);
+}
+
+.metric-card {
+  @apply rounded-xl border border-border bg-surface2 p-4 transition-all duration-300;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.metric-card:hover {
+  border-color: rgba(59, 130, 246, 0.38);
+  transform: translateY(-2px);
+  box-shadow:
+    0 16px 40px rgba(2, 6, 23, 0.48),
+    0 0 28px rgba(59, 130, 246, 0.08);
+}
