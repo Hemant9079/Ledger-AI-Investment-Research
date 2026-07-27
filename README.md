@@ -1,4 +1,4 @@
-# Ledger — AI Investment Research Agent
+# Ledger — AI Investment Research Agent's
 
 A multi-agent AI system that takes a company name and returns an **INVEST / PASS**
 decision, backed by real research, financial data, and risk analysis — with full
