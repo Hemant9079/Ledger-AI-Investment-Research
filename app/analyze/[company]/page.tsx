@@ -49,22 +49,64 @@ export default function AnalyzePage({ params }: { params: { company: string } })
 
   return (
     <main className="relative min-h-screen overflow-hidden px-4 py-8 sm:px-6 sm:py-10">
-      <div className="pointer-events-none absolute inset-0 premium-grid opacity-20" />
-      <div className="pointer-events-none absolute left-1/4 top-0 h-80 w-80 rounded-full bg-brand/15 blur-3xl" />
-      <div className="pointer-events-none absolute right-0 top-64 h-96 w-96 rounded-full bg-ai/10 blur-3xl" />
+      {/* Background glows */}
+      <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
+        <div
+          className="ai-glow absolute left-1/3 -top-20 h-96 w-96 rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%)",
+          }}
+        />
+        <div
+          className="ai-glow absolute right-10 top-64 h-72 w-72 rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(52,211,153,0.08) 0%, transparent 70%)",
+            animationDelay: "2.5s",
+          }}
+        />
+      </div>
 
       <div className="relative z-10 mx-auto max-w-7xl">
-        <header className="mb-8 flex items-center justify-between gap-4 rounded-2xl border border-border bg-surface/60 px-4 py-3 backdrop-blur-xl">
+        {/* ── Header bar ── */}
+        <header
+          className="mb-8 flex items-center justify-between gap-4 rounded-2xl px-4 py-3 backdrop-blur-xl"
+          style={{
+            background: "rgba(10,20,14,0.7)",
+            border: "1px solid rgba(16,185,129,0.15)",
+          }}
+        >
           <Link
             href="/"
-            className="flex items-center gap-2 font-mono text-xs text-muted transition-colors hover:text-ink"
+            className="flex items-center gap-2 font-mono text-xs transition-colors"
+            style={{ color: "rgba(16,185,129,0.7)" }}
           >
-            <span className="text-brand">Back</span>
-            New search
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M9 2L4 7L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>Back</span>
+            <span className="text-muted">/ New search</span>
           </Link>
-          <span className="label-eyebrow">Investment Research Dashboard</span>
+
+          {/* Center label */}
+          <div className="flex items-center gap-2">
+            <div
+              className="h-1.5 w-1.5 rounded-full"
+              style={{
+                background: "#10B981",
+                boxShadow: "0 0 8px rgba(16,185,129,0.9)",
+                animation: "glow-pulse 2s ease-in-out infinite",
+              }}
+            />
+            <span className="label-eyebrow">Investment Research Dashboard</span>
+          </div>
+
+          {/* Logo mark */}
+          <span className="font-mono text-xs font-bold tracking-widest" style={{ color: "#10B981" }}>
+            LEDGER.AI
+          </span>
         </header>
 
+        {/* ── Company title ── */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
@@ -72,27 +114,43 @@ export default function AnalyzePage({ params }: { params: { company: string } })
           className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
         >
           <div>
-            <span className="label-eyebrow text-brand">Company Intelligence</span>
-            <h1 className="mt-2 font-display text-4xl leading-tight md:text-6xl">
+            <span className="label-eyebrow">Company Intelligence</span>
+            <h1 className="mt-2 text-4xl font-bold leading-tight tracking-tight md:text-6xl">
               {companyName}
             </h1>
           </div>
           {data?.financial?.tickerSymbol && (
-            <span className="w-fit rounded-full border border-brand/30 bg-brand/10 px-4 py-2 font-mono text-sm text-brand shadow-lg shadow-brand/10">
+            <span
+              className="w-fit rounded-full px-4 py-2 font-mono text-sm font-semibold shadow-lg"
+              style={{
+                background: "rgba(16,185,129,0.1)",
+                border: "1px solid rgba(16,185,129,0.3)",
+                color: "#10B981",
+                boxShadow: "0 0 20px rgba(16,185,129,0.2)",
+              }}
+            >
               {data.financial.tickerSymbol}
             </span>
           )}
         </motion.div>
 
+        {/* ── Loading ── */}
         {status === "loading" && <LoadingState companyName={companyName} />}
 
+        {/* ── Error ── */}
         {status === "error" && (
-          <div className="card border-pass/40 p-8">
-            <p className="mb-2 font-medium text-pass">Analysis failed</p>
+          <div
+            className="card p-8"
+            style={{ borderColor: "rgba(239,68,68,0.4)", background: "rgba(239,68,68,0.06)" }}
+          >
+            <p className="mb-2 font-semibold" style={{ color: "#EF4444" }}>
+              Analysis failed
+            </p>
             <p className="text-sm text-muted">{errorMsg}</p>
           </div>
         )}
 
+        {/* ── Results ── */}
         {status === "success" && data && (
           <motion.div
             initial={{ opacity: 0, y: 18 }}
@@ -102,10 +160,7 @@ export default function AnalyzePage({ params }: { params: { company: string } })
           >
             <div className="flex flex-col gap-6 lg:col-span-2">
               {data.research && (
-                <CompanyOverviewCard
-                  research={data.research}
-                  financial={data.financial}
-                />
+                <CompanyOverviewCard research={data.research} financial={data.financial} />
               )}
               {data.research && <ResearchSummaryCard research={data.research} />}
               {data.financial?.isPublic && (
