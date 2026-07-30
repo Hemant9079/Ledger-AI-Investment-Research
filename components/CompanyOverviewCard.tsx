@@ -19,7 +19,7 @@ export default function CompanyOverviewCard({ research, financial }: Props) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="label-eyebrow">Company Overview</span>
         {financial?.isPublic && (
-          <span className="w-fit rounded-full border border-brand/30 bg-brand/10 px-3 py-1 font-mono text-xs text-brand">
+          <span className="w-fit rounded-full px-3 py-1 font-mono text-xs" >
             {financial.tickerSymbol ?? "Public"}
           </span>
         )}
@@ -87,21 +87,15 @@ function StatField({
           {label}
         </span>
         <span
-          className={`grid h-8 w-8 place-items-center rounded-lg border font-mono text-[10px] ${
-            accent
-              ? "border-brand/35 bg-brand/10 text-brand"
-              : highlight
-              ? "border-invest/35 bg-invest/10 text-invest"
-              : "border-border bg-surface text-muted"
-          }`}
+          className="grid h-8 w-8 place-items-center rounded-lg font-mono text-[10px]"
+          
         >
           {icon}
         </span>
       </div>
       <div
-        className={`break-words text-sm font-semibold ${
-          accent ? "text-brand" : highlight ? "text-invest" : "text-ink"
-        }`}
+        className="break-words text-sm font-semibold"
+        
       >
         {value}
       </div>

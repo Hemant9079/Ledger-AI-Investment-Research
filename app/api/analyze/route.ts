@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-
+      
     const graph = buildInvestmentResearchGraph();
     const initialState = createInitialState(companyName);
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("POST /api/analyze failed:", err);
     return NextResponse.json(
-      {
+      {   
         error:
           err?.message ??
           "Something went wrong while analyzing this company. Please try again."

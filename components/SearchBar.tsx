@@ -9,6 +9,7 @@ const EXAMPLES = ["Nvidia", "Tesla", "Zomato", "Infosys", "Apple"];
 export default function SearchBar() {
   const router = useRouter();
   const [value, setValue] = useState("");
+  const [focused, setFocused] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,43 +20,51 @@ export default function SearchBar() {
 
   return (
     <div className="w-full">
-      <form
+      <motion.form
         onSubmit={handleSubmit}
-        className="glass-panel relative flex flex-col gap-3 overflow-hidden rounded-2xl p-2 sm:flex-row"
+        className={`relative flex flex-col gap-3 overflow-hidden rounded-2xl p-2 sm:flex-row border bg-surface transition-colors duration-300 ${focused ? 'border-invest' : 'border-border'}`}
       >
-        <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-brand/80 to-transparent" />
-        <div className="flex flex-1 items-center gap-3 rounded-xl bg-base/35 px-4 py-2">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-brand/25 to-ai/25 text-sm font-semibold text-brand">
+
+        <div className="flex flex-1 items-center gap-3 rounded-xl px-4 py-2 bg-surface2">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg font-mono text-xs font-bold bg-invest/10 border border-invest/20 text-invest">
             AI
           </span>
+
           <input
+            id="company-search-input"
             value={value}
             onChange={(e) => setValue(e.target.value)}
-            placeholder="Ask AI to analyze any company..."
-            className="min-h-12 flex-1 bg-transparent text-base text-ink placeholder:text-muted focus:outline-none"
-            aria-label="Company name"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            placeholder="Search any company — Nvidia, Zomato, Apple..."
+            className="min-h-12 flex-1 bg-transparent text-base text-ink placeholder:text-muted/60 focus:outline-none"
+            aria-label="Company name or stock ticker"
+            autoComplete="off"
           />
         </div>
+
         <motion.button
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
           type="submit"
-          className="rounded-xl bg-gradient-to-r from-brand to-ai px-7 py-4 font-semibold text-white shadow-lg shadow-brand/20 transition-opacity hover:opacity-95"
+          id="analyze-submit-button"
+          className="btn-neon rounded-xl px-8 py-4 text-sm tracking-wide"
+          style={{ color: "#030712" }}
         >
-          Analyze
+          Analyze →
         </motion.button>
-      </form>
+      </motion.form>
 
       <div className="mt-4 flex flex-wrap justify-center gap-2">
+        <span className="mr-1 font-mono text-[11px] text-muted/60">Try:</span>
         {EXAMPLES.map((name) => (
-          <motion.button
+          <button
             key={name}
-            whileHover={{ y: -2 }}
             onClick={() => router.push(`/analyze/${encodeURIComponent(name)}`)}
-            className="rounded-full border border-border bg-surface/60 px-3 py-1.5 font-mono text-xs text-muted transition-colors hover:border-brand/60 hover:text-ink"
+            className="rounded-full border border-border bg-surface px-3 py-1 font-mono text-xs text-muted transition-colors hover:border-invest hover:text-invest"
           >
             {name}
-          </motion.button>
+          </button>
         ))}
       </div>
     </div>
