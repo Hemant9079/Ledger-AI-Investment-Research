@@ -343,11 +343,7 @@ export default function DocsPage() {
                 </a>
                 . Feel free to fork it, self-host it, or contribute.
               </FAQ>
-              <FAQ q="How do I run it locally?">
-                Clone the repo, copy <Code>.env.example</Code> to <Code>.env</Code>, add your API keys
-                (Google Gemini or Groq, and optionally OpenAI), then run <Code>npm install && npm run dev</Code>.
-                The app starts on <Code>localhost:3000</Code>.
-              </FAQ>
+              
             </div>
           </Section>
 
