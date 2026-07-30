@@ -22,46 +22,11 @@ export default function SearchBar() {
     <div className="w-full">
       <motion.form
         onSubmit={handleSubmit}
-        animate={{
-          boxShadow: focused
-            ? "0 0 60px rgba(16,185,129,0.35), 0 0 120px rgba(16,185,129,0.1)"
-            : "0 0 20px rgba(16,185,129,0.1)",
-        }}
-        transition={{ duration: 0.3 }}
-        className="relative flex flex-col gap-3 overflow-hidden rounded-2xl p-2 sm:flex-row"
-        style={{
-          background: "rgba(10, 20, 14, 0.75)",
-          border: `1px solid ${focused ? "rgba(16,185,129,0.5)" : "rgba(16,185,129,0.2)"}`,
-          backdropFilter: "blur(24px)",
-          transition: "border-color 0.3s ease",
-        }}
+        className={`relative flex flex-col gap-3 overflow-hidden rounded-2xl p-2 sm:flex-row border bg-surface transition-colors duration-300 ${focused ? 'border-invest' : 'border-border'}`}
       >
-        {/* Top gradient line */}
-        <div
-          className="pointer-events-none absolute inset-x-8 top-0 h-px"
-          style={{
-            background: focused
-              ? "linear-gradient(90deg, transparent, rgba(16,185,129,0.9), transparent)"
-              : "linear-gradient(90deg, transparent, rgba(16,185,129,0.4), transparent)",
-            transition: "all 0.3s ease",
-          }}
-        />
 
-        {/* Input area */}
-        <div
-          className="flex flex-1 items-center gap-3 rounded-xl px-4 py-2"
-          style={{ background: "rgba(3, 7, 18, 0.4)" }}
-        >
-          {/* AI badge */}
-          <span
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-lg font-mono text-xs font-bold"
-            style={{
-              background: "linear-gradient(135deg, rgba(5,150,105,0.3), rgba(16,185,129,0.2))",
-              border: "1px solid rgba(16,185,129,0.3)",
-              color: "#10B981",
-              boxShadow: "0 0 12px rgba(16,185,129,0.2)",
-            }}
-          >
+        <div className="flex flex-1 items-center gap-3 rounded-xl px-4 py-2 bg-surface2">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg font-mono text-xs font-bold bg-invest/10 border border-invest/20 text-invest">
             AI
           </span>
 
@@ -78,7 +43,6 @@ export default function SearchBar() {
           />
         </div>
 
-        {/* Submit button */}
         <motion.button
           whileHover={{ scale: 1.03 }}
           whileTap={{ scale: 0.97 }}
@@ -91,38 +55,16 @@ export default function SearchBar() {
         </motion.button>
       </motion.form>
 
-      {/* Example chips */}
       <div className="mt-4 flex flex-wrap justify-center gap-2">
         <span className="mr-1 font-mono text-[11px] text-muted/60">Try:</span>
         {EXAMPLES.map((name) => (
-          <motion.button
+          <button
             key={name}
-            whileHover={{ y: -2, scale: 1.04 }}
-            whileTap={{ scale: 0.97 }}
             onClick={() => router.push(`/analyze/${encodeURIComponent(name)}`)}
-            className="rounded-full px-3 py-1 font-mono text-xs transition-all duration-200"
-            style={{
-              border: "1px solid rgba(16,185,129,0.2)",
-              background: "rgba(16,185,129,0.06)",
-              color: "rgba(16,185,129,0.7)",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "rgba(16,185,129,0.5)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#10B981";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow =
-                "0 0 12px rgba(16,185,129,0.2)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "rgba(16,185,129,0.2)";
-              (e.currentTarget as HTMLButtonElement).style.color =
-                "rgba(16,185,129,0.7)";
-              (e.currentTarget as HTMLButtonElement).style.boxShadow = "none";
-            }}
+            className="rounded-full border border-border bg-surface px-3 py-1 font-mono text-xs text-muted transition-colors hover:border-invest hover:text-invest"
           >
             {name}
-          </motion.button>
+          </button>
         ))}
       </div>
     </div>

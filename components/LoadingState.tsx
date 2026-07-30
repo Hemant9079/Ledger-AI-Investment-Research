@@ -3,11 +3,38 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="11" cy="11" r="7" />
+    <line x1="16.5" y1="16.5" x2="22" y2="22" />
+  </svg>
+);
+const BarChartIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="12" width="4" height="9" rx="1" />
+    <rect x="10" y="7" width="4" height="14" rx="1" />
+    <rect x="17" y="3" width="4" height="18" rx="1" />
+  </svg>
+);
+const AlertIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3L2 21h20L12 3z" />
+    <line x1="12" y1="10" x2="12" y2="14" />
+    <circle cx="12" cy="17" r="0.5" fill="currentColor" />
+  </svg>
+);
+const CheckCircleIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 22C6.48 22 2 17.52 2 12S6.48 2 12 2s10 4.48 10 10-4.48 10-10 10z" />
+    <polyline points="9 12 11 14 15 10" />
+  </svg>
+);
+
 const STEPS = [
-  { agent: "Research Agent", icon: "🔍", desc: "Gathering company background and news" },
-  { agent: "Financial Agent", icon: "📊", desc: "Pulling live market data and financials" },
-  { agent: "Risk Agent", icon: "⚠️", desc: "Scanning competitive and market risks" },
-  { agent: "Decision Agent", icon: "✅", desc: "Weighing evidence for final verdict" },
+  { agent: "Research Agent", Icon: SearchIcon,     desc: "Gathering company background and news" },
+  { agent: "Financial Agent", Icon: BarChartIcon,  desc: "Pulling live market data and financials" },
+  { agent: "Risk Agent",      Icon: AlertIcon,     desc: "Scanning competitive and market risks" },
+  { agent: "Decision Agent",  Icon: CheckCircleIcon, desc: "Weighing evidence for final verdict" },
 ];
 
 export default function LoadingState({ companyName }: { companyName: string }) {
@@ -29,74 +56,41 @@ export default function LoadingState({ companyName }: { companyName: string }) {
   }, []);
 
   return (
-    <section
-      className="card scan-sheen relative overflow-hidden p-8 sm:p-12"
-      style={{ borderColor: "rgba(16,185,129,0.2)" }}
-    >
-      {/* Top glow line */}
-      <div
-        className="absolute inset-x-0 top-0 h-px"
-        style={{
-          background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.8), transparent)",
-        }}
-      />
+    <section className="card relative overflow-hidden p-8 sm:p-12">
 
       <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-        {/* Animated icon */}
         <div className="relative mb-8">
-          {/* Outer ring */}
-          <div
-            className="absolute -inset-3 rounded-full"
-            style={{
-              border: "1px solid rgba(16,185,129,0.2)",
-              animation: "glow-pulse 2s ease-in-out infinite",
-            }}
-          />
-          {/* Inner spinner */}
-          <div
-            className="relative grid h-20 w-20 place-items-center rounded-2xl"
-            style={{
-              background: "rgba(16,185,129,0.08)",
-              border: "1px solid rgba(16,185,129,0.3)",
-              boxShadow: "0 0 40px rgba(16,185,129,0.2)",
-            }}
-          >
+          <div className="relative grid h-20 w-20 place-items-center rounded-2xl border border-border bg-surface2 shadow-sm">
             <div
-              className="h-10 w-10 animate-spin rounded-full border-2"
-              style={{
-                borderColor: "rgba(16,185,129,0.2)",
-                borderTopColor: "#10B981",
-                boxShadow: "0 0 12px rgba(16,185,129,0.4)",
-              }}
+              className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-invest"
             />
           </div>
         </div>
 
         <h2 className="text-2xl font-bold tracking-tight md:text-3xl">
           Analyzing{" "}
-          <span style={{ color: "#10B981" }}>{companyName}</span>
+          <span className="text-invest">{companyName}</span>
         </h2>
 
-        {/* Active step label */}
         <AnimatePresence mode="wait">
-          <motion.p
-            key={stepIndex}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            transition={{ duration: 0.3 }}
-            className="mt-3 font-mono text-sm"
-            style={{ color: "rgba(16,185,129,0.75)" }}
-          >
-            {STEPS[stepIndex].icon} {STEPS[stepIndex].desc}
-          </motion.p>
+          {(() => {
+            const ActiveIcon = STEPS[stepIndex].Icon;
+            return (
+              <motion.p
+                key={stepIndex}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.3 }}
+                className="mt-3 font-mono text-sm flex items-center justify-center gap-2 text-invest/80"
+              >
+                <ActiveIcon />{STEPS[stepIndex].desc}
+              </motion.p>
+            );
+          })()}
         </AnimatePresence>
 
-        {/* Progress bar */}
-        <div
-          className="mt-8 h-1 w-full overflow-hidden rounded-full"
-          style={{ background: "rgba(16,185,129,0.1)" }}
-        >
+        <div className="mt-8 h-1 w-full overflow-hidden rounded-full bg-surface2 border border-border">
           <motion.div
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.5, ease: "easeOut" }}
@@ -104,7 +98,6 @@ export default function LoadingState({ companyName }: { companyName: string }) {
           />
         </div>
 
-        {/* Steps grid */}
         <div className="mt-8 grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
           {STEPS.map((step, index) => (
             <motion.div
@@ -113,40 +106,17 @@ export default function LoadingState({ companyName }: { companyName: string }) {
                 opacity: index <= stepIndex ? 1 : 0.35,
                 y: index === stepIndex ? -4 : 0,
               }}
-              className="rounded-xl p-3 text-left transition-all"
-              style={{
-                background:
-                  index === stepIndex
-                    ? "rgba(16,185,129,0.1)"
-                    : "rgba(10,20,14,0.6)",
-                border:
-                  index === stepIndex
-                    ? "1px solid rgba(16,185,129,0.4)"
-                    : "1px solid rgba(16,185,129,0.1)",
-                boxShadow:
-                  index === stepIndex
-                    ? "0 0 20px rgba(16,185,129,0.15)"
-                    : "none",
-              }}
+              className={`rounded-xl p-3 text-left transition-all border ${index === stepIndex ? 'border-invest bg-invest/5' : 'border-border bg-surface'}`}
             >
               <div className="flex items-center justify-between">
-                <div className="label-eyebrow">Agent {index + 1}</div>
+                <div className="font-mono text-[10px] tracking-[0.22em] uppercase text-muted">Agent {index + 1}</div>
                 {index <= stepIndex && (
-                  <div
-                    className="h-1.5 w-1.5 rounded-full"
-                    style={{
-                      background:
-                        index < stepIndex ? "#10B981" : "rgba(16,185,129,0.6)",
-                      boxShadow:
-                        index === stepIndex
-                          ? "0 0 8px rgba(16,185,129,0.8)"
-                          : "none",
-                      animation: index === stepIndex ? "glow-pulse 1.5s ease-in-out infinite" : "none",
-                    }}
-                  />
+                  <div className={`h-1.5 w-1.5 rounded-full ${index < stepIndex ? 'bg-invest' : 'bg-invest/60'}`} />
                 )}
               </div>
-              <div className="mt-1.5 text-sm">{step.icon}</div>
+              <div className={`mt-1.5 flex items-center ${index <= stepIndex ? 'text-invest' : 'text-muted/40'}`}>
+                {(() => { const SI = step.Icon; return <SI />; })()}
+              </div>
               <div className="mt-1 text-xs leading-5 text-muted">{step.agent}</div>
             </motion.div>
           ))}

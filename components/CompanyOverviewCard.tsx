@@ -19,7 +19,7 @@ export default function CompanyOverviewCard({ research, financial }: Props) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <span className="label-eyebrow">Company Overview</span>
         {financial?.isPublic && (
-          <span className="w-fit rounded-full px-3 py-1 font-mono text-xs" style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', color: '#10B981' }}>
+          <span className="w-fit rounded-full px-3 py-1 font-mono text-xs" >
             {financial.tickerSymbol ?? "Public"}
           </span>
         )}
@@ -88,18 +88,14 @@ function StatField({
         </span>
         <span
           className="grid h-8 w-8 place-items-center rounded-lg font-mono text-[10px]"
-          style={{
-            background: accent || highlight ? 'rgba(16,185,129,0.1)' : 'rgba(10,20,14,0.6)',
-            border: accent || highlight ? '1px solid rgba(16,185,129,0.3)' : '1px solid rgba(16,185,129,0.1)',
-            color: accent || highlight ? '#10B981' : '#6B7280'
-          }}
+          
         >
           {icon}
         </span>
       </div>
       <div
         className="break-words text-sm font-semibold"
-        style={{ color: accent || highlight ? '#10B981' : '#F9FAFB' }}
+        
       >
         {value}
       </div>

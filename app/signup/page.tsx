@@ -105,7 +105,6 @@ export default function SignupPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden flex items-center justify-center px-4 py-20">
-      {/* Background glows */}
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
         <div
           className="absolute left-1/2 -top-32 h-[600px] w-[700px] -translate-x-1/2 rounded-full ai-glow"
@@ -121,7 +120,6 @@ export default function SignupPage() {
         />
       </div>
 
-      {/* Navbar */}
       <nav className="nav-bar fixed top-0 left-0 right-0 z-30">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-3">
@@ -151,7 +149,6 @@ export default function SignupPage() {
         </div>
       </nav>
 
-      {/* Auth Card */}
       <AnimatePresence mode="wait">
         {step === "form" ? (
           <motion.div
@@ -163,13 +160,11 @@ export default function SignupPage() {
             className="relative z-10 w-full max-w-md"
           >
             <div className="card scan-sheen relative overflow-hidden p-8">
-              {/* Top accent line */}
               <div
                 className="absolute inset-x-0 top-0 h-px"
                 style={{ background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.9), transparent)" }}
               />
 
-              {/* Header */}
               <div className="mb-8 text-center">
                 <div
                   className="mb-4 inline-flex items-center gap-2 rounded-full px-4 py-2 font-mono text-[11px] uppercase tracking-widest"
@@ -187,7 +182,6 @@ export default function SignupPage() {
                 </p>
               </div>
 
-              {/* Tab switcher */}
               <div
                 className="mb-6 flex rounded-xl p-1"
                 style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(16,185,129,0.1)" }}
@@ -205,12 +199,11 @@ export default function SignupPage() {
                       fontWeight: activeTab === tab ? 700 : 500,
                     }}
                   >
-                    {tab === "social" ? "🌐 Social Sign Up" : "✉️ Email & Password"}
+                    {tab === "social" ? "Social Sign Up" : "Email & Password"}
                   </button>
                 ))}
               </div>
 
-              {/* Tab Content */}
               <AnimatePresence mode="wait">
                 {activeTab === "social" ? (
                   <motion.div
@@ -299,7 +292,6 @@ export default function SignupPage() {
                           )}
                         </button>
                       </div>
-                      {/* Password strength meter */}
                       {password.length > 0 && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="mt-2">
                           <div className="flex gap-1">
@@ -344,7 +336,6 @@ export default function SignupPage() {
                       )}
                     </div>
 
-                    {/* Terms checkbox */}
                     <label className="flex cursor-pointer items-start gap-3">
                       <div
                         onClick={() => setAgreed(!agreed)}
@@ -384,7 +375,6 @@ export default function SignupPage() {
                 )}
               </AnimatePresence>
 
-              {/* Divider */}
               <div className="my-6 flex items-center gap-4">
                 <div className="h-px flex-1" style={{ background: "rgba(16,185,129,0.08)" }} />
                 <span className="font-mono text-[10px] uppercase tracking-widest" style={{ color: "rgba(156,163,175,0.4)" }}>or</span>
@@ -406,11 +396,10 @@ export default function SignupPage() {
               className="mt-4 text-center font-mono text-[10px] uppercase tracking-widest"
               style={{ color: "rgba(156,163,175,0.3)" }}
             >
-              🔒 256-bit TLS · OAuth 2.0 · SOC 2 Compliant
+              Secure: 256-bit TLS · OAuth 2.0 · SOC 2 Compliant
             </motion.p>
           </motion.div>
         ) : (
-          /* Success State */
           <motion.div
             key="success"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -421,7 +410,6 @@ export default function SignupPage() {
             <div className="card relative overflow-hidden p-10 text-center">
               <div className="absolute inset-x-0 top-0 h-px" style={{ background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.9), transparent)" }} />
 
-              {/* Animated checkmark */}
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
