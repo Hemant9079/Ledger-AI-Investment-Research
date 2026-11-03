@@ -1,0 +1,239 @@
+---
+- name: "Install and Configure Nagios Core on Monitoring Server"
+  hosts: monitoring_servers
+  become: true
+  vars:
+    nagios_version: "4.5.1"
+    plugins_version: "2.4.8"
+    nrpe_version: "4.1.0"
+    nagios_admin_user: "nagiosadmin"
+    nagios_admin_password: "{{ nagios_password | default('LedgerAI@2026') }}"
+
+  tasks:
+    - name: Allow HTTP (Port 80) in UFW for Nagios Web UI
+      community.general.ufw:
+        rule: allow
+        port: "80"
+        proto: tcp
+
+    - name: Install build dependencies, Apache2, and PHP
+      ansible.builtin.apt:
+        name:
+          - apache2
+          - apache2-utils
+          - php
+          - libapache2-mod-php
+          - libgd-dev
+          - libssl-dev
+          - build-essential
+          - autoconf
+          - automake
+          - gcc
+          - libc6
+          - libmcrypt-dev
+          - make
+          - unzip
+          - wget
+          - curl
+          - gettext
+          - gawk
+          - dc
+          - bc
+        state: present
+        update_cache: true
+
+    - name: Create nagios system user and group
+      ansible.builtin.user:
+        name: nagios
+        system: true
+        shell: /bin/false
+
+    - name: Create nagcmd group for external commands
+      ansible.builtin.group:
+        name: nagcmd
+        state: present
+
+    - name: Add nagios and www-data to nagcmd group
+      ansible.builtin.user:
+        name: "{{ item }}"
+        groups: nagcmd
+        append: true
+      loop:
+        - nagios
+        - www-data
+
+    # --- Nagios Core Download & Build ---
+    - name: Check if Nagios Core binary already exists
+      ansible.builtin.stat:
+        path: /usr/local/nagios/bin/nagios
+      register: nagios_bin
+
+    - name: Download and compile Nagios Core {{ nagios_version }}
+      when: not nagios_bin.stat.exists
+      block:
+        - name: Download Nagios Core source tarball
+          ansible.builtin.get_url:
+            url: "https://github.com/NagiosEnterprises/nagioscore/releases/download/nagios-{{ nagios_version }}/nagios-{{ nagios_version }}.tar.gz"
+            dest: "/tmp/nagios-{{ nagios_version }}.tar.gz"
+            mode: "0644"
+
+        - name: Extract Nagios Core tarball
+          ansible.builtin.unarchive:
+            src: "/tmp/nagios-{{ nagios_version }}.tar.gz"
+            dest: /tmp/
+            remote_src: true
+
+        - name: Configure Nagios Core
+          ansible.builtin.command: ./configure --with-httpd-conf=/etc/apache2/sites-enabled
+          args:
+            chdir: "/tmp/nagios-{{ nagios_version }}"
+
+        - name: Compile Nagios Core source
+          ansible.builtin.command: make all
+          args:
+            chdir: "/tmp/nagios-{{ nagios_version }}"
+
+        - name: Install Nagios Core binaries and init scripts
+          ansible.builtin.command: "{{ item }}"
+          args:
+            chdir: "/tmp/nagios-{{ nagios_version }}"
+          loop:
+            - make install
+            - make install-daemoninit
+            - make install-commandmode
+            - make install-config
+            - make install-webconf
+
+    # --- Nagios Official Plugins ---
+    - name: Check if check_ping plugin exists
+      ansible.builtin.stat:
+        path: /usr/local/nagios/libexec/check_ping
+      register: ping_plugin
+
+    - name: Download and compile Nagios Official Plugins {{ plugins_version }}
+      when: not ping_plugin.stat.exists
+      block:
+        - name: Download Nagios Plugins source
+          ansible.builtin.get_url:
+            url: "https://github.com/nagios-plugins/nagios-plugins/releases/download/release-{{ plugins_version }}/nagios-plugins-{{ plugins_version }}.tar.gz"
+            dest: "/tmp/nagios-plugins-{{ plugins_version }}.tar.gz"
+            mode: "0644"
+
+        - name: Extract Nagios Plugins tarball
+          ansible.builtin.unarchive:
+            src: "/tmp/nagios-plugins-{{ plugins_version }}.tar.gz"
+            dest: /tmp/
+            remote_src: true
+
+        - name: Configure Nagios Plugins
+          ansible.builtin.command: ./configure --with-nagios-user=nagios --with-nagios-group=nagios --with-openssl
+          args:
+            chdir: "/tmp/nagios-plugins-{{ plugins_version }}"
+
+        - name: Build and install Nagios Plugins
+          ansible.builtin.command: "{{ item }}"
+          args:
+            chdir: "/tmp/nagios-plugins-{{ plugins_version }}"
+          loop:
+            - make
+            - make install
+
+    # --- NRPE Plugin (check_nrpe client) ---
+    - name: Check if check_nrpe plugin exists
+      ansible.builtin.stat:
+        path: /usr/local/nagios/libexec/check_nrpe
+      register: nrpe_plugin
+
+    - name: Download and compile check_nrpe plugin
+      when: not nrpe_plugin.stat.exists
+      block:
+        - name: Download NRPE source
+          ansible.builtin.get_url:
+            url: "https://github.com/NagiosEnterprises/nrpe/releases/download/nrpe-{{ nrpe_version }}/nrpe-{{ nrpe_version }}.tar.gz"
+            dest: "/tmp/nrpe-{{ nrpe_version }}.tar.gz"
+            mode: "0644"
+
+        - name: Extract NRPE tarball
+          ansible.builtin.unarchive:
+            src: "/tmp/nrpe-{{ nrpe_version }}.tar.gz"
+            dest: /tmp/
+            remote_src: true
+
+        - name: Configure NRPE source
+          ansible.builtin.command: ./configure
+          args:
+            chdir: "/tmp/nrpe-{{ nrpe_version }}"
+
+        - name: Compile check_nrpe client
+          ansible.builtin.command: make check_nrpe
+          args:
+            chdir: "/tmp/nrpe-{{ nrpe_version }}"
+
+        - name: Copy check_nrpe binary to Nagios libexec
+          ansible.builtin.copy:
+            src: "/tmp/nrpe-{{ nrpe_version }}/src/check_nrpe"
+            dest: /usr/local/nagios/libexec/check_nrpe
+            owner: nagios
+            group: nagios
+            mode: "0755"
+            remote_src: true
+
+    # --- Web Dashboard & Apache Configuration ---
+    - name: Enable Apache CGI and Rewrite modules
+      community.general.apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - cgi
+        - rewrite
+
+    - name: Create or update Nagios admin web user credentials
+      ansible.builtin.command: htpasswd -b -c /usr/local/nagios/etc/htpasswd.users {{ nagios_admin_user }} {{ nagios_admin_password }}
+      changed_when: true
+
+    - name: Ensure correct permissions on htpasswd.users
+      ansible.builtin.file:
+        path: /usr/local/nagios/etc/htpasswd.users
+        owner: www-data
+        group: www-data
+        mode: "0640"
+
+    - name: Create custom servers configuration directory in Nagios
+      ansible.builtin.file:
+        path: /usr/local/nagios/etc/servers
+        state: directory
+        owner: nagios
+        group: nagios
+        mode: "0755"
+
+    - name: Enable servers directory in nagios.cfg
+      ansible.builtin.lineinfile:
+        path: /usr/local/nagios/etc/nagios.cfg
+        line: "cfg_dir=/usr/local/nagios/etc/servers"
+        insertafter: "^#cfg_dir=/usr/local/nagios/etc/servers"
+        state: present
+
+    - name: Verify Nagios configuration validity
+      ansible.builtin.command: /usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
+      changed_when: false
+
+    - name: Restart and enable Apache2 service
+      ansible.builtin.systemd:
+        name: apache2
+        state: restarted
+        enabled: true
+
+    - name: Restart and enable Nagios service
+      ansible.builtin.systemd:
+        name: nagios
+        state: restarted
+        enabled: true
+
+    - name: Nagios Web Access Info
+      ansible.builtin.debug:
+        msg:
+          - "Nagios Core has been installed successfully!"
+          - "Access Web Dashboard: http://{{ ansible_host }}/nagios"
+          - "Username: {{ nagios_admin_user }}"
+          - "Password: {{ nagios_admin_password }}"
+

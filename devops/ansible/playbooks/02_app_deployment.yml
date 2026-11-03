@@ -1,0 +1,197 @@
+---
+- name: "Deploy Ledger AI Application Stack (Node.js, PM2, Nginx)"
+  hosts: app_servers
+  become: true
+  vars:
+    node_version: "20.x"
+    app_repo_url: "{{ repo_url | default('') }}"
+    app_directory: "/var/www/ledger-ai"
+    app_user: "ubuntu"
+    app_group: "ubuntu"
+
+  tasks:
+    - name: Allow HTTP (Port 80) and HTTPS (Port 443) in UFW
+      community.general.ufw:
+        rule: allow
+        port: "{{ item }}"
+        proto: tcp
+      loop:
+        - "80"
+        - "443"
+
+    # --- Node.js & NPM Setup ---
+    - name: Download NodeSource setup script for Node.js {{ node_version }}
+      ansible.builtin.get_url:
+        url: "https://deb.nodesource.com/setup_{{ node_version }}"
+        dest: /tmp/nodesource_setup.sh
+        mode: "0755"
+
+    - name: Execute NodeSource setup script
+      ansible.builtin.command: /tmp/nodesource_setup.sh
+      args:
+        creates: /etc/apt/sources.list.d/nodesource.list
+
+    - name: Install Node.js, NPM, and Nginx
+      ansible.builtin.apt:
+        name:
+          - nodejs
+          - nginx
+        state: present
+        update_cache: true
+
+    - name: Verify Node.js and NPM versions
+      ansible.builtin.command: "{{ item }} -v"
+      register: tool_versions
+      loop:
+        - node
+        - npm
+      changed_when: false
+
+    - name: Print Node and NPM versions
+      ansible.builtin.debug:
+        msg: "Installed {{ item.cmd[0] }} version: {{ item.stdout }}"
+      loop: "{{ tool_versions.results }}"
+
+    # --- PM2 Process Manager Setup ---
+    - name: Install PM2 globally via NPM
+      community.general.npm:
+        name: pm2
+        global: true
+        state: present
+
+    - name: Configure PM2 to start on system boot
+      ansible.builtin.command: pm2 startup systemd -u {{ app_user }} --hp /home/{{ app_user }}
+      environment:
+        PATH: "{{ ansible_env.PATH }}:/usr/bin:/usr/local/bin"
+      register: pm2_startup
+      changed_when: "'already configured' not in pm2_startup.stdout"
+      failed_when: false
+
+    # --- Application Code & Environment ---
+    - name: Create application directory at {{ app_directory }}
+      ansible.builtin.file:
+        path: "{{ app_directory }}"
+        state: directory
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0755"
+
+    - name: Deploy application source code via rsync / archive
+      ansible.builtin.copy:
+        src: "../../../"
+        dest: "{{ app_directory }}/"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "preserve"
+        exclude:
+          - ".git"
+          - "node_modules"
+          - ".next"
+          - "devops"
+      when: app_repo_url == ""
+
+    - name: Clone application repository from Git (if repository URL provided)
+      ansible.builtin.git:
+        repo: "{{ app_repo_url }}"
+        dest: "{{ app_directory }}"
+        version: main
+        force: true
+      become_user: "{{ app_user }}"
+      when: app_repo_url != ""
+
+    - name: Render production .env configuration
+      ansible.builtin.template:
+        src: ../templates/env.production.j2
+        dest: "{{ app_directory }}/.env"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0600"
+
+    - name: Install project npm dependencies
+      ansible.builtin.command: npm install --legacy-peer-deps
+      args:
+        chdir: "{{ app_directory }}"
+      become_user: "{{ app_user }}"
+      environment:
+        NODE_ENV: production
+
+    - name: Build Next.js application for production
+      ansible.builtin.command: npm run build
+      args:
+        chdir: "{{ app_directory }}"
+      become_user: "{{ app_user }}"
+      environment:
+        NODE_ENV: production
+
+    # --- PM2 Process Deployment ---
+    - name: Deploy PM2 ecosystem configuration
+      ansible.builtin.template:
+        src: ../templates/ecosystem.config.js.j2
+        dest: "{{ app_directory }}/ecosystem.config.js"
+        owner: "{{ app_user }}"
+        group: "{{ app_group }}"
+        mode: "0644"
+
+    - name: Start or Reload application via PM2
+      ansible.builtin.command: pm2 startOrReload ecosystem.config.js --update-env
+      args:
+        chdir: "{{ app_directory }}"
+      become_user: "{{ app_user }}"
+      environment:
+        PATH: "{{ ansible_env.PATH }}:/usr/bin:/usr/local/bin"
+
+    - name: Save PM2 running process list
+      ansible.builtin.command: pm2 save
+      become_user: "{{ app_user }}"
+      environment:
+        PATH: "{{ ansible_env.PATH }}:/usr/bin:/usr/local/bin"
+
+    # --- Nginx Reverse Proxy Setup ---
+    - name: Remove default Nginx site configuration
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Deploy Ledger AI Nginx virtual host configuration
+      ansible.builtin.template:
+        src: ../templates/nginx_ledger.conf.j2
+        dest: /etc/nginx/sites-available/ledger-ai.conf
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Enable Ledger AI Nginx site
+      ansible.builtin.file:
+        src: /etc/nginx/sites-available/ledger-ai.conf
+        dest: /etc/nginx/sites-enabled/ledger-ai.conf
+        state: link
+
+    - name: Validate Nginx configuration syntax
+      ansible.builtin.command: nginx -t
+      changed_when: false
+
+    - name: Ensure Nginx is running and enabled on boot
+      ansible.builtin.systemd:
+        name: nginx
+        state: reloaded
+        enabled: true
+
+    # --- Health Verification ---
+    - name: Wait for application port 3000 to become responsive
+      ansible.builtin.wait_for:
+        port: 3000
+        host: 127.0.0.1
+        delay: 3
+        timeout: 60
+
+    - name: Verify HTTP response from Nginx (Port 80)
+      ansible.builtin.uri:
+        url: "http://127.0.0.1"
+        status_code: 200
+        timeout: 10
+      register: http_check
+
+    - name: Deployment Success Summary
+      ansible.builtin.debug:
+        msg: "Ledger AI is successfully running behind Nginx! HTTP Status: {{ http_check.status }}"
+
