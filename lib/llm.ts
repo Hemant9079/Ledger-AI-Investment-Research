@@ -47,7 +47,7 @@ export function getChatModel(): BaseChatModel {
   }
   cachedModel = new ChatGoogleGenerativeAI({
     apiKey: googleKey,
-    model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+    model: process.env.GEMINI_MODEL || "gemini-3.8-flash",
     temperature: 0.2
   });
   return cachedModel;
