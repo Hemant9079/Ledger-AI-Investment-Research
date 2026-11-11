@@ -33,20 +33,21 @@ export function getChatModel(): BaseChatModel {
     }
     cachedModel = new ChatGroq({
       apiKey: process.env.GROQ_API_KEY,
-      model: "llama-3.3-70b-versatile",
+      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
       temperature: 0.2
     });
     return cachedModel;
   }
 
-  if (!process.env.GOOGLE_API_KEY) {
+  const googleKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+  if (!googleKey) {
     throw new Error(
-      "LLM_PROVIDER=gemini but GOOGLE_API_KEY is missing from your environment."
+      "LLM_PROVIDER=gemini but GOOGLE_API_KEY / GEMINI_API_KEY is missing from your environment."
     );
   }
   cachedModel = new ChatGoogleGenerativeAI({
-    apiKey: process.env.GOOGLE_API_KEY,
-    model: "gemini-2.0-flash",
+    apiKey: googleKey,
+    model: process.env.GEMINI_MODEL || "gemini-2.0-flash",
     temperature: 0.2
   });
   return cachedModel;
