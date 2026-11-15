@@ -3,8 +3,13 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth";
 
 export default function SignupPage() {
+  const router = useRouter();
+  const auth = useAuth();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,11 +20,18 @@ export default function SignupPage() {
   const [agreed, setAgreed] = useState(false);
   const [step, setStep] = useState<"form" | "success">("form");
 
+  function finishSignup(resolvedName: string, resolvedEmail: string) {
+    auth.login(resolvedName || resolvedEmail.split("@")[0], resolvedEmail);
+    auth.resetGuestCount();
+    setTimeout(() => router.push("/"), 1200);
+  }
+
   const handleSocialSignup = (provider: string) => {
     setIsLoading(provider);
     setTimeout(() => {
       setIsLoading(null);
       setStep("success");
+      finishSignup(name, email || `user_${provider}@social.auth`);
     }, 2000);
   };
 
@@ -30,6 +42,7 @@ export default function SignupPage() {
     setTimeout(() => {
       setIsLoading(null);
       setStep("success");
+      finishSignup(name, email);
     }, 2000);
   };
 
@@ -435,12 +448,19 @@ export default function SignupPage() {
                 </div>
                 <h2 className="mt-3 text-2xl font-bold text-white">You&apos;re in!</h2>
                 <p className="mt-3 text-sm" style={{ color: "rgba(156,163,175,0.7)" }}>
-                  Your Ledger.AI account is ready. Start researching your first stock now.
+                  Your Ledger.AI account is ready. Redirecting to dashboard…
                 </p>
+
+                <div className="mt-6 flex justify-center">
+                  <svg className="h-6 w-6 animate-spin" style={{ color: "#10B981" }} fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                </div>
 
                 <Link
                   href="/"
-                  className="btn-neon mt-8 inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-bold tracking-wider"
+                  className="btn-neon mt-6 inline-flex items-center gap-2 rounded-xl px-8 py-3.5 text-sm font-bold tracking-wider"
                 >
                   Go to Dashboard
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

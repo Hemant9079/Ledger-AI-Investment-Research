@@ -27,12 +27,13 @@ export async function fetchFinancialSnapshot(
 ): Promise<FinancialSnapshot> {
   try {
     const searchResults = await yahooFinance.search(companyName, {
-      quotesCount: 1,
+      quotesCount: 5,
       newsCount: 0
     });
 
-    const bestMatch = searchResults.quotes?.[0] as any;
-    const symbol: string | undefined = bestMatch?.symbol;
+    const quotes = searchResults.quotes || [];
+    const bestMatch = quotes.find((q: any) => q.quoteType === "EQUITY") || quotes[0];
+    const symbol: string | undefined = (bestMatch as any)?.symbol;
 
     if (!symbol) return emptySnapshot();
 

@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import type { AgentState } from "@/agents/state";
 import LoadingState from "@/components/LoadingState";
+import { useAuth } from "@/lib/auth";
 
 import ResearchTab from "@/components/tabs/ResearchTab";
 import FinancialsTab from "@/components/tabs/FinancialsTab";
@@ -12,8 +14,59 @@ import RiskTab from "@/components/tabs/RiskTab";
 import DecisionTab from "@/components/tabs/DecisionTab";
 import SummaryTab from "@/components/tabs/SummaryTab";
 
+/* ------------------------------------------------------------------ */
+/*  Types                                                               */
+/* ------------------------------------------------------------------ */
+
 type Status = "loading" | "success" | "error";
 type TabId = "research" | "financials" | "risk" | "decision" | "summary";
+
+export interface SearchHistoryEntry {
+  company: string;
+  timestamp: string;
+  decision?: string;
+  confidenceScore?: number;
+}
+
+export interface FavouriteEntry {
+  company: string;
+  tickerSymbol: string | null;
+  addedAt: string;
+  lastPrice?: number;
+  lastChecked?: string;
+}
+
+const HISTORY_KEY = "ledger_search_history";
+const FAVOURITES_KEY = "ledger_favourites";
+const MAX_HISTORY = 50;
+
+/* ------------------------------------------------------------------ */
+/*  localStorage helpers                                                */
+/* ------------------------------------------------------------------ */
+
+function getHistory(): SearchHistoryEntry[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) ?? "[]"); } catch { return []; }
+}
+
+function saveHistory(entries: SearchHistoryEntry[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
+}
+
+function getFavourites(): FavouriteEntry[] {
+  if (typeof window === "undefined") return [];
+  try { return JSON.parse(localStorage.getItem(FAVOURITES_KEY) ?? "[]"); } catch { return []; }
+}
+
+function saveFavourites(entries: FavouriteEntry[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(FAVOURITES_KEY, JSON.stringify(entries));
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tab definitions                                                     */
+/* ------------------------------------------------------------------ */
 
 const TAB_ICONS: Record<TabId, JSX.Element> = {
   research: (
@@ -60,14 +113,90 @@ const TABS: { id: TabId; label: string; description: string }[] = [
   { id: "summary",    label: "Summary",    description: "Consolidated full report"          },
 ];
 
+/* ------------------------------------------------------------------ */
+/*  Star button                                                          */
+/* ------------------------------------------------------------------ */
+
+function StarButton({
+  company,
+  tickerSymbol,
+  lastPrice,
+}: {
+  company: string;
+  tickerSymbol?: string | null;
+  lastPrice?: number;
+}) {
+  const [isFav, setIsFav] = useState(false);
+
+  useEffect(() => {
+    const favs = getFavourites();
+    setIsFav(favs.some((f) => f.company.toLowerCase() === company.toLowerCase()));
+  }, [company]);
+
+  function toggle() {
+    const favs = getFavourites();
+    const idx = favs.findIndex((f) => f.company.toLowerCase() === company.toLowerCase());
+    if (idx >= 0) {
+      favs.splice(idx, 1);
+      setIsFav(false);
+    } else {
+      favs.unshift({
+        company,
+        tickerSymbol: tickerSymbol ?? null,
+        addedAt: new Date().toISOString(),
+        lastPrice,
+        lastChecked: new Date().toISOString(),
+      });
+      setIsFav(true);
+    }
+    saveFavourites(favs);
+  }
+
+  return (
+    <motion.button
+      onClick={toggle}
+      whileHover={{ scale: 1.15 }}
+      whileTap={{ scale: 0.9 }}
+      title={isFav ? "Remove from favourites" : "Add to favourites"}
+      className="flex items-center justify-center rounded-lg p-1.5 transition-colors duration-200"
+      style={{
+        background: isFav ? "rgba(217,119,6,0.12)" : "rgba(255,255,255,0.04)",
+        border: isFav ? "1px solid rgba(217,119,6,0.3)" : "1px solid rgba(255,255,255,0.08)",
+      }}
+    >
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill={isFav ? "#D97706" : "none"}
+        stroke={isFav ? "#D97706" : "rgba(156,163,175,0.6)"}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+      </svg>
+    </motion.button>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main page                                                           */
+/* ------------------------------------------------------------------ */
+
 export default function AnalyzePage({ params }: { params: { company: string } }) {
   const companyName = decodeURIComponent(params.company);
+  const router = useRouter();
+  const auth = useAuth();
+
   const [status, setStatus] = useState<Status>("loading");
   const [data, setData] = useState<AgentState | null>(null);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [activeTab, setActiveTab] = useState<TabId>("research");
+  const [retryCount, setRetryCount] = useState(0);
   const [now, setNow] = useState("");
 
+  // Clock
   useEffect(() => {
     const tick = () =>
       setNow(new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" }));
@@ -76,8 +205,25 @@ export default function AnalyzePage({ params }: { params: { company: string } })
     return () => clearInterval(id);
   }, []);
 
+  // Save to history after success
+  const saveToHistory = useCallback((result: AgentState) => {
+    const entry: SearchHistoryEntry = {
+      company: companyName,
+      timestamp: new Date().toISOString(),
+      decision: result.decision?.decision,
+      confidenceScore: result.decision?.confidenceScore,
+    };
+    const history = getHistory();
+    // Remove any existing entry for the same company
+    const filtered = history.filter((h) => h.company.toLowerCase() !== companyName.toLowerCase());
+    const updated = [entry, ...filtered].slice(0, MAX_HISTORY);
+    saveHistory(updated);
+  }, [companyName]);
+
+  // Fetch analysis
   useEffect(() => {
     let cancelled = false;
+    setErrorMsg("");
     async function run() {
       setStatus("loading");
       try {
@@ -91,6 +237,7 @@ export default function AnalyzePage({ params }: { params: { company: string } })
         if (cancelled) return;
         setData(json);
         setStatus("success");
+        saveToHistory(json);
       } catch (err: any) {
         if (cancelled) return;
         setErrorMsg(err?.message ?? "Something went wrong.");
@@ -99,7 +246,7 @@ export default function AnalyzePage({ params }: { params: { company: string } })
     }
     run();
     return () => { cancelled = true; };
-  }, [companyName]);
+  }, [companyName, retryCount, saveToHistory]);
 
   const isInvest = data?.decision?.decision === "INVEST";
   const accentColor = data?.decision
@@ -111,6 +258,7 @@ export default function AnalyzePage({ params }: { params: { company: string } })
 
       <nav className="nav-bar sticky top-0 z-30">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
+          {/* Left: logo + company info */}
           <div className="flex items-center gap-4">
             <Link href="/" className="flex flex-col leading-none transition-opacity hover:opacity-80">
               <span className="font-mono text-[13px] font-black tracking-[0.18em] uppercase text-ink">
@@ -148,12 +296,70 @@ export default function AnalyzePage({ params }: { params: { company: string } })
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          {/* Right: star + auth + new search */}
+          <div className="flex items-center gap-3">
             {now && (
               <span className="hidden font-mono text-[10px] sm:block" style={{ color: "rgba(156,163,175,0.4)" }}>
                 {now} UTC
               </span>
             )}
+
+            {/* Star button — only show when analysis loaded */}
+            {status === "success" && data && (
+              <StarButton
+                company={companyName}
+                tickerSymbol={data.financial?.tickerSymbol}
+                lastPrice={data.financial?.currentPrice ?? undefined}
+              />
+            )}
+
+            {/* Auth nav items */}
+            {auth.isLoggedIn && auth.user ? (
+              <>
+                <Link
+                  href="/history"
+                  className="hidden font-mono text-[11px] text-muted transition-colors hover:text-invest sm:block"
+                >
+                  History
+                </Link>
+                <Link
+                  href="/favourites"
+                  className="hidden font-mono text-[11px] text-muted transition-colors hover:text-invest sm:block"
+                >
+                  Favourites
+                </Link>
+                <button
+                  onClick={() => { auth.logout(); router.push("/"); }}
+                  className="hidden font-mono text-[11px] text-muted transition-colors hover:text-pass sm:block"
+                >
+                  Sign Out
+                </button>
+                <div
+                  className="flex h-7 w-7 items-center justify-center rounded-full font-mono text-xs font-bold"
+                  style={{ background: "linear-gradient(135deg,#059669,#10B981)", color: "#030712" }}
+                  title={auth.user.name}
+                >
+                  {auth.user.name.charAt(0).toUpperCase()}
+                </div>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden font-mono text-[11px] text-muted transition-colors hover:text-invest sm:block"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="hidden rounded-full px-3 py-1 font-mono text-[10px] font-bold tracking-wider sm:block"
+                  style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#10B981" }}
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
+
             <Link
               href="/"
               className="flex items-center gap-1.5 font-mono text-[11px] transition-colors"
@@ -208,8 +414,23 @@ export default function AnalyzePage({ params }: { params: { company: string } })
 
         {status === "error" && (
           <div className="card border-pass/30 bg-pass/5 p-8">
-            <p className="mb-2 font-semibold text-pass">Analysis failed</p>
-            <p className="text-sm text-muted">{errorMsg}</p>
+            <p className="mb-2 font-semibold text-pass">Analysis Encountered an Issue</p>
+            <p className="text-sm text-muted mb-4">{errorMsg}</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setRetryCount((c) => c + 1)}
+                className="btn-neon rounded-xl px-5 py-2 text-xs font-mono font-bold tracking-wider"
+              >
+                Retry Analysis
+              </button>
+              <Link
+                href="/"
+                className="rounded-xl border border-border bg-surface px-5 py-2 text-xs font-mono text-muted hover:text-ink transition-colors"
+              >
+                Back to Search
+              </Link>
+            </div>
           </div>
         )}
 

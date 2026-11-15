@@ -1,9 +1,16 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { motion } from "framer-motion";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import SearchBar from "@/components/SearchBar";
+import { useAuth } from "@/lib/auth";
+
+/* ------------------------------------------------------------------ */
+/*  Background decorative chart                                         */
+/* ------------------------------------------------------------------ */
 
 function BackgroundChart() {
   const W = 1200;
@@ -43,7 +50,7 @@ function BackgroundChart() {
     label: Math.round(maxP - f * (maxP - minP)),
   }));
 
-  const pathLen = prices.length * 31; // approximate
+  const pathLen = prices.length * 31;
 
   return (
     <div
@@ -166,6 +173,150 @@ function BackgroundChart() {
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Guest limit modal                                                   */
+/* ------------------------------------------------------------------ */
+
+function GuestLimitModal({
+  open,
+  usedCount,
+  onClose,
+}: {
+  open: boolean;
+  usedCount: number;
+  onClose: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          key="guest-limit-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.25 }}
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: "rgba(9,9,11,0.88)", backdropFilter: "blur(12px)" }}
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.93, y: 32 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.93, y: 32 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+            className="relative w-full max-w-md overflow-hidden rounded-2xl"
+            style={{
+              background: "linear-gradient(145deg, #18181b, #0f1f17)",
+              border: "1px solid rgba(16,185,129,0.25)",
+              boxShadow: "0 0 60px rgba(16,185,129,0.15), 0 24px 48px rgba(0,0,0,0.6)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* top accent line */}
+            <div
+              className="absolute inset-x-0 top-0 h-px"
+              style={{ background: "linear-gradient(90deg, transparent, rgba(16,185,129,0.9), transparent)" }}
+            />
+
+            {/* glow blob */}
+            <div
+              className="pointer-events-none absolute -top-20 left-1/2 h-40 w-80 -translate-x-1/2 rounded-full"
+              style={{ background: "radial-gradient(ellipse, rgba(16,185,129,0.2) 0%, transparent 70%)" }}
+            />
+
+            <div className="relative p-8 text-center">
+              {/* icon */}
+              <div
+                className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full"
+                style={{
+                  background: "rgba(16,185,129,0.1)",
+                  border: "2px solid rgba(16,185,129,0.3)",
+                  boxShadow: "0 0 30px rgba(16,185,129,0.2)",
+                }}
+              >
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+
+              {/* usage counter */}
+              <div
+                className="mb-4 inline-flex items-center gap-2 rounded-full px-4 py-1.5 font-mono text-[11px] uppercase tracking-widest"
+                style={{ background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.25)", color: "#10B981" }}
+              >
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full"
+                  style={{ background: "#10B981", boxShadow: "0 0 6px rgba(16,185,129,0.8)" }}
+                />
+                {usedCount} / 2 free analyses used
+              </div>
+
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-white">
+                Free limit reached
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed" style={{ color: "rgba(156,163,175,0.75)" }}>
+                You&apos;ve used both of your free AI analyses. Sign in or create a free account to unlock unlimited research.
+              </p>
+
+              {/* feature list */}
+              <div className="my-6 space-y-2 text-left">
+                {[
+                  "Unlimited company analyses",
+                  "Save favourites & search history",
+                  "Full decision reports",
+                ].map((feat) => (
+                  <div key={feat} className="flex items-center gap-2.5 font-mono text-xs" style={{ color: "rgba(156,163,175,0.7)" }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 13l4 4L19 7" />
+                    </svg>
+                    {feat}
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Link
+                  href="/signup"
+                  className="btn-neon flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-bold tracking-wider"
+                >
+                  Create Free Account
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+                <Link
+                  href="/login"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-mono font-semibold tracking-wider transition-all duration-200"
+                  style={{
+                    border: "1px solid rgba(16,185,129,0.25)",
+                    background: "rgba(16,185,129,0.06)",
+                    color: "#10B981",
+                  }}
+                >
+                  Sign In to Existing Account
+                </Link>
+              </div>
+
+              <button
+                onClick={onClose}
+                className="mt-4 font-mono text-[11px] tracking-wider transition-colors"
+                style={{ color: "rgba(156,163,175,0.4)" }}
+              >
+                Maybe later
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Ticker & agent card data                                            */
+/* ------------------------------------------------------------------ */
 
 const TICKER_ITEMS = [
   { symbol: "NVDA", move: "+2.4%" },
@@ -232,13 +383,47 @@ const AGENT_CARDS: { index: string; name: string; desc: string; icon: ReactNode;
   },
 ];
 
+/* ------------------------------------------------------------------ */
+/*  Home Page                                                           */
+/* ------------------------------------------------------------------ */
+
 export default function HomePage() {
+  const router = useRouter();
+  const auth = useAuth();
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [usedCount, setUsedCount] = useState(0);
+
+  /**
+   * Called by SearchBar whenever the user triggers a search.
+   * We intercept it here for guest limit checks.
+   */
+  function handleSearch(company: string) {
+    if (!auth.isLoggedIn) {
+      const count = auth.getGuestCount();
+      if (count >= 2) {
+        setUsedCount(count);
+        setShowLimitModal(true);
+        return;
+      }
+      auth.incrementGuestCount();
+    }
+    router.push(`/analyze/${encodeURIComponent(company)}`);
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden">
       <div className="pointer-events-none fixed inset-0 z-0" aria-hidden>
         <BackgroundChart />
       </div>
 
+      {/* Guest limit modal */}
+      <GuestLimitModal
+        open={showLimitModal}
+        usedCount={usedCount}
+        onClose={() => setShowLimitModal(false)}
+      />
+
+      {/* ---- Navbar ---- */}
       <nav className="nav-bar relative z-20">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
@@ -257,7 +442,6 @@ export default function HomePage() {
               </span>
             </div>
           </div>
-
 
           <div className="hidden items-center gap-6 sm:flex">
             <Link
@@ -285,30 +469,53 @@ export default function HomePage() {
             </button>
           </div>
 
+          {/* Auth section */}
           <div className="flex items-center gap-3">
-
-            <Link
-              href="/login"
-              id="nav-login"
-              className="hidden font-mono text-xs tracking-wider text-muted transition-colors hover:text-invest sm:block"
-            >
-              Log In
-            </Link>
-
-            <Link
-              href="/signup"
-              id="nav-signup"
-              className="btn-neon rounded-full px-4 py-1.5 font-mono text-xs font-bold tracking-wider"
-              style={{ fontSize: "0.7rem" }}
-            >
-              Sign Up
-            </Link>
+            {auth.isLoggedIn && auth.user ? (
+              <>
+                <Link href="/history" className="hidden font-mono text-xs tracking-wider text-muted transition-colors hover:text-invest sm:block">
+                  History
+                </Link>
+                <Link href="/favourites" className="hidden font-mono text-xs tracking-wider text-muted transition-colors hover:text-invest sm:block">
+                  Favourites
+                </Link>
+                <button
+                  onClick={() => { auth.logout(); }}
+                  className="hidden font-mono text-xs tracking-wider text-muted transition-colors hover:text-pass sm:block"
+                >
+                  Sign Out
+                </button>
+                {/* Avatar */}
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full font-mono text-sm font-bold"
+                  style={{ background: "linear-gradient(135deg,#059669,#10B981)", color: "#030712" }}
+                  title={auth.user.name}
+                >
+                  {auth.user.name.charAt(0).toUpperCase()}
+                </div>
+              </>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="hidden font-mono text-xs tracking-wider text-muted transition-colors hover:text-invest sm:block"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  className="btn-neon rounded-full px-4 py-1.5 font-mono text-xs font-bold tracking-wider"
+                  style={{ fontSize: "0.7rem" }}
+                >
+                  Sign Up
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
 
-
-
+      {/* ---- Ticker ---- */}
       <div className="relative z-10 overflow-hidden border-b border-invest/10 bg-base/60 py-2.5 backdrop-blur-xl">
         <div className="ticker-track flex w-max gap-3 whitespace-nowrap font-mono text-[11px]">
           {[...TICKER_ITEMS, ...TICKER_ITEMS, ...TICKER_ITEMS].map((item, index) => (
@@ -332,10 +539,8 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* ---- Hero ---- */}
       <section className="relative z-10 mx-auto flex min-h-[calc(100vh-108px)] max-w-6xl flex-col items-center justify-center px-6 py-20 text-center">
-        
-
-
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -364,7 +569,8 @@ export default function HomePage() {
           transition={{ delay: 0.26, duration: 0.65 }}
           className="mt-12 w-full max-w-2xl"
         >
-          <SearchBar />
+          {/* SearchBar with intercepted navigation */}
+          <SearchBar onSearch={handleSearch} />
         </motion.div>
 
         <motion.div
@@ -378,7 +584,6 @@ export default function HomePage() {
             <AgentCard key={agent.index} {...agent} delay={i * 0.06} />
           ))}
         </motion.div>
-
 
         <motion.div
           initial={{ opacity: 0 }}

@@ -6,16 +6,28 @@ import { useState } from "react";
 
 const EXAMPLES = ["Nvidia", "Tesla", "Zomato", "Infosys", "Apple"];
 
-export default function SearchBar() {
+interface SearchBarProps {
+  /** If provided, called with the company name instead of navigating directly. */
+  onSearch?: (company: string) => void;
+}
+
+export default function SearchBar({ onSearch }: SearchBarProps) {
   const router = useRouter();
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
 
+  function navigate(company: string) {
+    if (!company.trim()) return;
+    if (onSearch) {
+      onSearch(company.trim());
+    } else {
+      router.push(`/analyze/${encodeURIComponent(company.trim())}`);
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = value.trim();
-    if (!trimmed) return;
-    router.push(`/analyze/${encodeURIComponent(trimmed)}`);
+    navigate(value);
   }
 
   return (
@@ -60,7 +72,7 @@ export default function SearchBar() {
         {EXAMPLES.map((name) => (
           <button
             key={name}
-            onClick={() => router.push(`/analyze/${encodeURIComponent(name)}`)}
+            onClick={() => navigate(name)}
             className="rounded-full border border-border bg-surface px-3 py-1 font-mono text-xs text-muted transition-colors hover:border-invest hover:text-invest"
           >
             {name}

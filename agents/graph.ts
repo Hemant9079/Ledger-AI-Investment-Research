@@ -42,7 +42,8 @@ export function buildInvestmentResearchGraph() {
   workflow.addNode("decisionNode", decisionAgent);
 
   workflow.addEdge(START, "researchNode" as any);
-  workflow.addEdge("researchNode" as any, "financialNode" as any);
+  workflow.addEdge(START, "financialNode" as any);
+  workflow.addEdge("researchNode" as any, "riskNode" as any);
   workflow.addEdge("financialNode" as any, "riskNode" as any);
   workflow.addEdge("riskNode" as any, "decisionNode" as any);
   workflow.addEdge("decisionNode" as any, END);

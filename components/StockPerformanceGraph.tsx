@@ -129,8 +129,9 @@ export default function StockPerformanceGraph({
         )}
 
         {status === "error" && (
-          <div className="absolute inset-0 z-10 grid place-items-center px-6 text-center text-sm text-pass">
-            {error}
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center text-sm text-muted">
+            <p className="font-semibold text-ink/80 mb-1">Stock chart currently unavailable</p>
+            <p className="text-xs text-muted/70 max-w-sm">{error || "Market historical data is not available for this symbol."}</p>
           </div>
         )}
 
