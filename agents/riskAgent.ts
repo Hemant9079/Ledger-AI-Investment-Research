@@ -1,5 +1,5 @@
 import { HumanMessage } from "@langchain/core/messages";
-import { getChatModel } from "@/lib/llm";
+import { invokeModelWithTimeout } from "@/lib/llm";
 import { riskPrompt } from "@/utils/promptTemplates";
 import { safeParseJSON } from "@/utils/parseJSON";
 import type { AgentState, RiskOutput } from "./state";
@@ -31,7 +31,6 @@ export async function riskAgent(state: AgentState): Promise<Partial<AgentState>>
     };
 
     try {
-      const model = getChatModel();
       const prompt = riskPrompt({
         companyName,
         industry,
@@ -39,7 +38,7 @@ export async function riskAgent(state: AgentState): Promise<Partial<AgentState>>
         financialSummary
       });
 
-      const response = await model.invoke([new HumanMessage(prompt)]);
+      const response = await invokeModelWithTimeout([new HumanMessage(prompt)], 6000);
       const raw = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
 
       parsed = safeParseJSON<RiskLLMShape>(raw, parsed);

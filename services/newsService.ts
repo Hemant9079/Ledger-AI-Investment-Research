@@ -13,7 +13,7 @@ export async function fetchLatestNews(companyName: string): Promise<NewsItem[]> 
       const url = `https://gnews.io/api/v4/search?q=${encodeURIComponent(
         companyName
       )}&lang=en&max=6&apikey=${gnewsKey}`;
-      const res = await fetch(url);
+      const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
       if (res.ok) {
         const data = await res.json();
         const items: NewsItem[] = (data.articles || []).map((a: any) => ({
@@ -37,7 +37,7 @@ async function fetchNewsFromGoogleRSS(companyName: string): Promise<NewsItem[]> 
     const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(
       companyName + " company"
     )}&hl=en-US&gl=US&ceid=US:en`;
-    const res = await fetch(rssUrl);
+    const res = await fetch(rssUrl, { signal: AbortSignal.timeout(3000) });
     const xml = await res.text();
 
     const items: NewsItem[] = [];

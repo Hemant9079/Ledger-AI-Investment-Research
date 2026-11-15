@@ -1,5 +1,5 @@
 import { HumanMessage } from "@langchain/core/messages";
-import { getChatModel } from "@/lib/llm";
+import { invokeModelWithTimeout } from "@/lib/llm";
 import { decisionPrompt } from "@/utils/promptTemplates";
 import { safeParseJSON } from "@/utils/parseJSON";
 import type { AgentState, DecisionOutput } from "./state";
@@ -37,7 +37,6 @@ export async function decisionAgent(state: AgentState): Promise<Partial<AgentSta
     };
 
     try {
-      const model = getChatModel();
       const prompt = decisionPrompt({
         companyName,
         researchSummary,
@@ -48,7 +47,7 @@ export async function decisionAgent(state: AgentState): Promise<Partial<AgentSta
         overallRiskLevel
       });
 
-      const response = await model.invoke([new HumanMessage(prompt)]);
+      const response = await invokeModelWithTimeout([new HumanMessage(prompt)], 6000);
       const raw = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
 
       parsed = safeParseJSON<DecisionLLMShape>(raw, parsed);

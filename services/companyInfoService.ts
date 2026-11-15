@@ -17,7 +17,7 @@ export async function fetchCompanyInfo(
       companyName + " company"
     )}&format=json&origin=*&srlimit=1`;
 
-    const searchRes  = await fetch(searchUrl);
+    const searchRes  = await fetch(searchUrl, { signal: AbortSignal.timeout(3000) });
     const searchData = await searchRes.json();
     const bestMatch  = searchData?.query?.search?.[0]?.title;
 
@@ -26,7 +26,7 @@ export async function fetchCompanyInfo(
     }
 
     const summaryUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bestMatch)}`;
-    const summaryRes  = await fetch(summaryUrl);
+    const summaryRes  = await fetch(summaryUrl, { signal: AbortSignal.timeout(3000) });
     const summaryData = await summaryRes.json();
     const extract: string = summaryData.extract ?? "";
 

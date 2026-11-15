@@ -1,6 +1,6 @@
 
 import { HumanMessage } from "@langchain/core/messages";
-import { getChatModel } from "@/lib/llm";
+import { invokeModelWithTimeout } from "@/lib/llm";
 import { fetchFinancialSnapshot } from "@/services/financialService";
 import { financialPrompt } from "@/utils/promptTemplates";
 import { safeParseJSON } from "@/utils/parseJSON";
@@ -44,7 +44,6 @@ export async function financialAgent(state: AgentState): Promise<Partial<AgentSt
     };
 
     try {
-      const model = getChatModel();
       const prompt = financialPrompt({
         companyName,
         isPublic: snapshot.isPublic,
@@ -57,7 +56,7 @@ export async function financialAgent(state: AgentState): Promise<Partial<AgentSt
         currency: snapshot.currency
       });
 
-      const response = await model.invoke([new HumanMessage(prompt)]);
+      const response = await invokeModelWithTimeout([new HumanMessage(prompt)], 6000);
       const raw = typeof response.content === "string" ? response.content : JSON.stringify(response.content);
 
       parsed = safeParseJSON<FinancialLLMShape>(raw, parsed);

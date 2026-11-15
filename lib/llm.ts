@@ -13,6 +13,7 @@ function createGroqModel(): BaseChatModel | null {
       model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
       temperature: 0.2,
       maxRetries: 1,
+      timeout: 8000,
     });
   } catch (e) {
     console.error("Failed to initialize ChatGroq:", e);
@@ -99,4 +100,23 @@ export function getChatModel(): BaseChatModel {
   }
 
   return cachedModel;
+}
+
+export async function invokeModelWithTimeout(
+  messages: any[],
+  timeoutMs: number = 8000
+): Promise<any> {
+  const model = getChatModel();
+  let timer: any;
+  const timeoutPromise = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`LLM invocation timed out after ${timeoutMs}ms`)), timeoutMs);
+  });
+  try {
+    const result = await Promise.race([model.invoke(messages), timeoutPromise]);
+    clearTimeout(timer);
+    return result;
+  } catch (err) {
+    clearTimeout(timer);
+    throw err;
+  }
 }

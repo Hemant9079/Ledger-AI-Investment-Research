@@ -1,6 +1,6 @@
 
 import { HumanMessage } from "@langchain/core/messages";
-import { getChatModel } from "@/lib/llm";
+import { invokeModelWithTimeout } from "@/lib/llm";
 import { fetchCompanyInfo } from "@/services/companyInfoService";
 import { fetchLatestNews } from "@/services/newsService";
 import { researchPrompt } from "@/utils/promptTemplates";
@@ -43,14 +43,13 @@ export async function researchAgent(state: AgentState): Promise<Partial<AgentSta
     };
 
     try {
-      const model  = getChatModel();
       const prompt = researchPrompt({
         companyName,
         wikiSummary:    companyInfo.summary,
         newsHeadlines:  news.map((n) => n.title)
       });
 
-      const response = await model.invoke([new HumanMessage(prompt)]);
+      const response = await invokeModelWithTimeout([new HumanMessage(prompt)], 6000);
       const raw =
         typeof response.content === "string"
           ? response.content
