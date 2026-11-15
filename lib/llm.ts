@@ -10,7 +10,7 @@ function createGroqModel(): BaseChatModel | null {
   try {
     return new ChatGroq({
       apiKey: process.env.GROQ_API_KEY,
-      model: process.env.GROQ_MODEL || "llama-3.1-8b-instant",
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
       temperature: 0.2,
       maxRetries: 1,
       timeout: 8000,
