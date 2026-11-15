@@ -232,7 +232,18 @@ export default function AnalyzePage({ params }: { params: { company: string } })
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ companyName }),
         });
-        const json = await res.json();
+
+        const text = await res.text();
+        let json: any;
+        try {
+          json = JSON.parse(text);
+        } catch {
+          if (res.status === 504 || text.includes("FUNCTION_INVOCATION_TIMEOUT")) {
+            throw new Error("Analysis timed out on the server. Please try again.");
+          }
+          throw new Error(text || `Analysis failed with status code ${res.status}`);
+        }
+
         if (!res.ok) throw new Error(json?.error ?? "Analysis failed.");
         if (cancelled) return;
         setData(json);

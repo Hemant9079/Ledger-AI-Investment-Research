@@ -3,7 +3,6 @@ import { HumanMessage } from "@langchain/core/messages";
 import { getChatModel } from "@/lib/llm";
 import { fetchCompanyInfo } from "@/services/companyInfoService";
 import { fetchLatestNews } from "@/services/newsService";
-import { fetchFinancialSnapshot } from "@/services/financialService";
 import { researchPrompt } from "@/utils/promptTemplates";
 import { safeParseJSON } from "@/utils/parseJSON";
 import type { AgentState, ResearchOutput } from "./state";
@@ -21,7 +20,7 @@ export async function researchAgent(state: AgentState): Promise<Partial<AgentSta
   const { companyName } = state;
 
   try {
-    const [companyInfo, news, snapshot] = await Promise.all([
+    const [companyInfo, news] = await Promise.all([
       fetchCompanyInfo(companyName).catch(() => ({
         title: companyName,
         summary: `No Wikipedia entry found for "${companyName}".`,
@@ -31,30 +30,12 @@ export async function researchAgent(state: AgentState): Promise<Partial<AgentSta
         industry: null,
         employeeCount: null,
       })),
-      fetchLatestNews(companyName).catch(() => []),
-      fetchFinancialSnapshot(companyName).catch(() => ({
-        tickerSymbol: null,
-        isPublic: false,
-        currency: null,
-        currentPrice: null,
-        marketCap: null,
-        peRatio: null,
-        fiftyTwoWeekHigh: null,
-        fiftyTwoWeekLow: null,
-        longName: null,
-        sector: null,
-        industry: null,
-        country: null,
-        city: null,
-        fullTimeEmployees: null,
-        longBusinessSummary: null,
-        totalCapitalization: null,
-      }))
+      fetchLatestNews(companyName).catch(() => [])
     ]);
 
     let parsed: ResearchLLMShape = {
-      industry: companyInfo.industry ?? snapshot.industry ?? "Unknown",
-      headquarters: companyInfo.headquarters ?? (snapshot.city && snapshot.country ? `${snapshot.city}, ${snapshot.country}` : "Unknown"),
+      industry: companyInfo.industry ?? "Corporate",
+      headquarters: companyInfo.headquarters ?? "Unknown",
       foundedYear: companyInfo.foundedYear ?? null,
       businessModel: "Global enterprise operations and product delivery.",
       marketPosition: "Significant player in its industry sector.",
@@ -85,15 +66,11 @@ export async function researchAgent(state: AgentState): Promise<Partial<AgentSta
 
     const industry =
       !isUnknown(parsed.industry)       ? parsed.industry
-      : companyInfo.industry            ? companyInfo.industry
-      : snapshot.industry               ?? "Unknown";
+      : companyInfo.industry            ?? "Unknown";
 
     const headquarters =
       !isUnknown(parsed.headquarters)   ? parsed.headquarters
-      : companyInfo.headquarters        ? companyInfo.headquarters
-      : snapshot.city && snapshot.country
-        ? `${snapshot.city}, ${snapshot.country}`
-      : snapshot.country                ?? "Unknown";
+      : companyInfo.headquarters        ?? "Unknown";
 
     const foundedYear =
       parsed.foundedYear                ?? companyInfo.foundedYear ?? null;
@@ -104,7 +81,7 @@ export async function researchAgent(state: AgentState): Promise<Partial<AgentSta
       industry,
       headquarters,
       foundedYear,
-      employeeCount:   companyInfo.employeeCount ?? snapshot.fullTimeEmployees ?? null,
+      employeeCount:   companyInfo.employeeCount ?? null,
       businessModel:   parsed.businessModel,
       marketPosition:  parsed.marketPosition,
       recentNews:      news,
