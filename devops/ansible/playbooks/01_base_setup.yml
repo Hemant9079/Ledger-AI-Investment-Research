@@ -1,0 +1,94 @@
+---
+- name: Step 2 - Base Server Hardening & Configuration
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache and upgrade packages
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+        upgrade: dist
+
+    - name: Install essential baseline utilities
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - build-essential
+          - htop
+          - ufw
+          - unzip
+          - jq
+          - ca-certificates
+          - software-properties-common
+          - stress-ng
+        state: present
+
+    - name: Check if swapfile exists
+      stat:
+        path: /swapfile
+      register: swap_file_check
+
+    - name: Create 2GB swap file (for stable builds and LLM agent memory headroom)
+      command: fallocate -l 2G /swapfile
+      when: not swap_file_check.stat.exists
+
+    - name: Set secure permissions on swapfile
+      file:
+        path: /swapfile
+        owner: root
+        group: root
+        mode: '0600'
+      when: not swap_file_check.stat.exists
+
+    - name: Format swapfile
+      command: mkswap /swapfile
+      when: not swap_file_check.stat.exists
+
+    - name: Enable swapfile
+      command: swapon /swapfile
+      when: not swap_file_check.stat.exists
+
+    - name: Add swapfile to /etc/fstab for persistence
+      lineinfile:
+        path: /etc/fstab
+        line: '/swapfile none swap sw 0 0'
+        state: present
+
+    - name: Configure sysctl swappiness
+      sysctl:
+        name: vm.swappiness
+        value: '10'
+        state: present
+        reload: yes
+
+    - name: Allow SSH through UFW
+      ufw:
+        rule: allow
+        port: '22'
+        proto: tcp
+
+    - name: Allow HTTP (Port 80)
+      ufw:
+        rule: allow
+        port: '80'
+        proto: tcp
+
+    - name: Allow HTTPS (Port 443)
+      ufw:
+        rule: allow
+        port: '443'
+        proto: tcp
+
+    - name: Allow NRPE (Port 5666) on App Server
+      ufw:
+        rule: allow
+        port: '5666'
+        proto: tcp
+      when: inventory_hostname in groups['app']
+
+    - name: Enable UFW firewall
+      ufw:
+        state: enabled
+        policy: allow

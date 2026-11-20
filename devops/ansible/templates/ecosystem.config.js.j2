@@ -1,0 +1,17 @@
+module.exports = {
+  apps: [
+    {
+      name: 'ledger-ai',
+      script: 'npm',
+      args: 'start',
+      cwd: '{{ app_dir }}',
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '800M',
+      env: {
+        NODE_ENV: 'production',
+        PORT: {{ app_port }}
+      }
+    }
+  ]
+};

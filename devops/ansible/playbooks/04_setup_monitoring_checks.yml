@@ -1,0 +1,121 @@
+---
+- name: Step 5 - Configure NRPE on App Server
+  hosts: app
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+  tasks:
+    - name: Install Nagios NRPE server and plugins on app host
+      apt:
+        name:
+          - nagios-nrpe-server
+          - nagios-plugins
+          - nagios-plugins-basic
+          - nagios-plugins-standard
+        state: present
+
+    - name: Copy custom check_mem script
+      template:
+        src: ../templates/check_mem.sh
+        dest: /usr/lib/nagios/plugins/check_mem.sh
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Copy custom check_pm2 script
+      template:
+        src: ../templates/check_pm2.sh
+        dest: /usr/lib/nagios/plugins/check_pm2.sh
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Configure allowed hosts in nrpe.cfg
+      lineinfile:
+        path: /etc/nagios/nrpe.cfg
+        regexp: '^allowed_hosts='
+        line: "allowed_hosts=127.0.0.1,::1,10.0.0.0/16,{{ hostvars['nagios_server']['ansible_host'] }}"
+
+    - name: Add custom command check_cpu to nrpe.cfg
+      lineinfile:
+        path: /etc/nagios/nrpe.cfg
+        regexp: '^command\[check_cpu\]'
+        line: 'command[check_cpu]=/usr/lib/nagios/plugins/check_load -r -w 80,75,70 -c 95,90,85'
+
+    - name: Add custom command check_mem to nrpe.cfg
+      lineinfile:
+        path: /etc/nagios/nrpe.cfg
+        regexp: '^command\[check_mem\]'
+        line: 'command[check_mem]=/usr/lib/nagios/plugins/check_mem.sh -w 80 -c 90'
+
+    - name: Add custom command check_disk to nrpe.cfg
+      lineinfile:
+        path: /etc/nagios/nrpe.cfg
+        regexp: '^command\[check_disk\]'
+        line: 'command[check_disk]=/usr/lib/nagios/plugins/check_disk -w 20% -c 10% -p /'
+
+    - name: Add custom command check_pm2 to nrpe.cfg
+      lineinfile:
+        path: /etc/nagios/nrpe.cfg
+        regexp: '^command\[check_pm2\]'
+        line: 'command[check_pm2]=/usr/lib/nagios/plugins/check_pm2.sh'
+
+    - name: Restart nagios-nrpe-server
+      service:
+        name: nagios-nrpe-server
+        state: restarted
+        enabled: yes
+
+- name: Step 5 - Register Host & Service Monitors on Nagios Core
+  hosts: monitoring
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+  tasks:
+    - name: Ensure /usr/local/nagios/etc/servers directory exists
+      file:
+        path: /usr/local/nagios/etc/servers
+        state: directory
+        owner: nagios
+        group: nagios
+        mode: '0755'
+
+    - name: Enable cfg_dir=/usr/local/nagios/etc/servers in nagios.cfg
+      lineinfile:
+        path: /usr/local/nagios/etc/nagios.cfg
+        regexp: '^#?cfg_dir=/usr/local/nagios/etc/servers'
+        line: 'cfg_dir=/usr/local/nagios/etc/servers'
+
+    - name: Add check_nrpe command definition to commands.cfg
+      blockinfile:
+        path: /usr/local/nagios/etc/objects/commands.cfg
+        marker: "# {mark} ANSIBLE MANAGED CHECK_NRPE"
+        block: |
+          define command {
+              command_name    check_nrpe
+              command_line    $USER1$/check_nrpe -H $HOSTADDRESS$ -c $ARG1$
+          }
+
+    - name: Deploy Ledger AI App Host monitoring definition
+      template:
+        src: ../templates/ledger_app_host.cfg.j2
+        dest: /usr/local/nagios/etc/servers/ledger_app.cfg
+        owner: nagios
+        group: nagios
+        mode: '0644'
+
+    - name: Deploy Vercel Production Endpoint monitoring definition
+      template:
+        src: ../templates/vercel_host.cfg.j2
+        dest: /usr/local/nagios/etc/servers/vercel.cfg
+        owner: nagios
+        group: nagios
+        mode: '0644'
+
+    - name: Verify Nagios configuration syntax
+      command: /usr/local/nagios/bin/nagios -v /usr/local/nagios/etc/nagios.cfg
+
+    - name: Restart Nagios service
+      service:
+        name: nagios
+        state: restarted

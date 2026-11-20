@@ -1,0 +1,26 @@
+---
+- name: Step 6 - Failure Simulation Scenario
+  hosts: app
+  become: yes
+  vars:
+    # Options: pm2, nginx, cpu
+    scenario: "pm2"
+  tasks:
+    - name: "SIMULATION [PM2]: Stop Ledger AI process"
+      command: pm2 stop ledger-ai
+      become_user: ubuntu
+      when: scenario == "pm2"
+
+    - name: "SIMULATION [Nginx]: Stop Nginx Web Server"
+      service:
+        name: nginx
+        state: stopped
+      when: scenario == "nginx"
+
+    - name: "SIMULATION [CPU Spike]: Trigger 100% CPU stress using stress-ng"
+      command: stress-ng --cpu 4 --cpu-load 100 --timeout 180s --daemon
+      when: scenario == "cpu"
+
+    - name: Print simulation status
+      debug:
+        msg: "Failure '{{ scenario }}' triggered! Check your Nagios dashboard to see the service transition to CRITICAL (RED)."

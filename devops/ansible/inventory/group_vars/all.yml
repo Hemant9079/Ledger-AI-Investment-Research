@@ -1,0 +1,27 @@
+---
+# Project Global Variables
+project_name: ledger-ai
+app_repo_url: "https://github.com/Hemant9079/Ledger-AI-Investment-Research.git"
+app_branch: "main"
+app_dir: "/var/www/ledger-ai"
+app_port: 3000
+
+# Nagios Settings
+nagios_admin_user: "admin"
+nagios_admin_password: "LedgerAI@2026"
+nagios_version: "4.5.1"
+nagios_plugins_version: "2.4.8"
+nrpe_version: "4.1.0"
+
+# External Vercel Endpoint to Benchmark & Monitor
+vercel_domain: "ledger-ai-investment-research.vercel.app"
+vercel_url: "https://ledger-ai-investment-research.vercel.app"
+
+# Application Environment Variables (Placeholders for Git repository safety)
+env_llm_provider: "groq"
+env_groq_api_key: "{{ lookup('env', 'GROQ_API_KEY') | default('your_groq_api_key_here', true) }}"
+env_groq_model: "openai/gpt-oss-20b"
+env_google_api_key: "{{ lookup('env', 'GOOGLE_API_KEY') | default('your_google_api_key_here', true) }}"
+env_gemini_model: "gemini-2.0-flash"
+env_openai_api_key: "{{ lookup('env', 'OPENAI_API_KEY') | default('your_openai_api_key_here', true) }}"
+env_gnews_api_key: "{{ lookup('env', 'GNEWS_API_KEY') | default('your_gnews_api_key_here', true) }}"

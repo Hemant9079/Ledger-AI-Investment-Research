@@ -1,0 +1,154 @@
+---
+- name: Step 5 - Nagios Core 4.5.1 Installation & Configuration
+  hosts: monitoring
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+  tasks:
+    - name: Install Apache, PHP, and compile tools
+      apt:
+        name:
+          - apache2
+          - apache2-utils
+          - php
+          - libapache2-mod-php
+          - libgd-dev
+          - build-essential
+          - libssl-dev
+          - unzip
+          - autoconf
+          - gcc
+          - libc6
+          - make
+        state: present
+
+    - name: Create nagios user
+      user:
+        name: nagios
+        system: yes
+
+    - name: Create nagcmd group
+      group:
+        name: nagcmd
+        system: yes
+
+    - name: Add nagios user to nagcmd group
+      user:
+        name: nagios
+        groups: nagcmd
+        append: yes
+
+    - name: Add www-data user to nagcmd group
+      user:
+        name: www-data
+        groups: nagcmd
+        append: yes
+
+    - name: Download Nagios Core source
+      get_url:
+        url: "https://github.com/NagiosEnterprises/nagioscore/releases/download/nagios-{{ nagios_version }}/nagios-{{ nagios_version }}.tar.gz"
+        dest: "/tmp/nagios-{{ nagios_version }}.tar.gz"
+
+    - name: Extract Nagios Core source
+      unarchive:
+        src: "/tmp/nagios-{{ nagios_version }}.tar.gz"
+        dest: /tmp
+        remote_src: yes
+
+    - name: Configure Nagios Core
+      command: ./configure --with-httpd-conf=/etc/apache2/sites-enabled
+      args:
+        chdir: "/tmp/nagios-{{ nagios_version }}"
+
+    - name: Compile Nagios Core
+      command: make all
+      args:
+        chdir: "/tmp/nagios-{{ nagios_version }}"
+
+    - name: Install Nagios Core binaries and scripts
+      command: "make {{ item }}"
+      args:
+        chdir: "/tmp/nagios-{{ nagios_version }}"
+      loop:
+        - install
+        - install-init
+        - install-commandmode
+        - install-config
+        - install-webconf
+
+    - name: Enable Apache CGI and Rewrite modules
+      apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - cgi
+        - rewrite
+
+    - name: Set Nagios web admin password
+      command: "htpasswd -b -c /usr/local/nagios/etc/htpasswd.users {{ nagios_admin_user }} {{ nagios_admin_password }}"
+
+    - name: Download Nagios Plugins source
+      get_url:
+        url: "https://github.com/nagios-plugins/nagios-plugins/releases/download/release-{{ nagios_plugins_version }}/nagios-plugins-{{ nagios_plugins_version }}.tar.gz"
+        dest: "/tmp/nagios-plugins-{{ nagios_plugins_version }}.tar.gz"
+
+    - name: Extract Nagios Plugins
+      unarchive:
+        src: "/tmp/nagios-plugins-{{ nagios_plugins_version }}.tar.gz"
+        dest: /tmp
+        remote_src: yes
+
+    - name: Configure Nagios Plugins
+      command: ./configure
+      args:
+        chdir: "/tmp/nagios-plugins-{{ nagios_plugins_version }}"
+
+    - name: Compile and install Nagios Plugins
+      command: "make {{ item }}"
+      args:
+        chdir: "/tmp/nagios-plugins-{{ nagios_plugins_version }}"
+      loop:
+        - all
+        - install
+
+    - name: Download check_nrpe plugin
+      get_url:
+        url: "https://github.com/NagiosEnterprises/nrpe/releases/download/nrpe-{{ nrpe_version }}/nrpe-{{ nrpe_version }}.tar.gz"
+        dest: "/tmp/nrpe-{{ nrpe_version }}.tar.gz"
+
+    - name: Extract NRPE
+      unarchive:
+        src: "/tmp/nrpe-{{ nrpe_version }}.tar.gz"
+        dest: /tmp
+        remote_src: yes
+
+    - name: Configure check_nrpe
+      command: ./configure
+      args:
+        chdir: "/tmp/nrpe-{{ nrpe_version }}"
+
+    - name: Compile check_nrpe plugin
+      command: make check_nrpe
+      args:
+        chdir: "/tmp/nrpe-{{ nrpe_version }}"
+
+    - name: Copy check_nrpe binary to Nagios libexec
+      copy:
+        src: "/tmp/nrpe-{{ nrpe_version }}/src/check_nrpe"
+        dest: /usr/local/nagios/libexec/check_nrpe
+        remote_src: yes
+        mode: '0755'
+        owner: nagios
+        group: nagios
+
+    - name: Restart Apache2 service
+      service:
+        name: apache2
+        state: restarted
+        enabled: yes
+
+    - name: Start and enable Nagios service
+      service:
+        name: nagios
+        state: restarted
+        enabled: yes

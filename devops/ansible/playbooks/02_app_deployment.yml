@@ -1,0 +1,139 @@
+---
+- name: Step 3 & 4 - Ledger AI Application Deployment (Next.js + PM2 + Nginx)
+  hosts: app
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+  tasks:
+    - name: Install NodeSource repository key for Node.js 20.x
+      apt_key:
+        url: https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key
+        state: present
+
+    - name: Add NodeSource Node.js 20.x repository
+      apt_repository:
+        repo: "deb https://deb.nodesource.com/node_20.x nodistro main"
+        state: present
+        update_cache: yes
+
+    - name: Install Node.js and Nginx
+      apt:
+        name:
+          - nodejs
+          - nginx
+        state: present
+
+    - name: Install PM2 globally via npm
+      npm:
+        name: pm2
+        global: yes
+        state: present
+
+    - name: Ensure app directory exists with ubuntu ownership
+      file:
+        path: "{{ app_dir }}"
+        state: directory
+        owner: ubuntu
+        group: ubuntu
+        mode: '0755'
+
+    - name: Clone latest Ledger AI repository from GitHub
+      git:
+        repo: "{{ app_repo_url }}"
+        dest: "{{ app_dir }}"
+        version: "{{ app_branch }}"
+        force: yes
+      become_user: ubuntu
+
+    - name: Create production .env file
+      template:
+        src: ../templates/env.production.j2
+        dest: "{{ app_dir }}/.env.production"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+
+    - name: Copy .env.production to .env.local
+      copy:
+        src: "{{ app_dir }}/.env.production"
+        dest: "{{ app_dir }}/.env.local"
+        remote_src: yes
+        owner: ubuntu
+        group: ubuntu
+        mode: '0600'
+
+    - name: Install npm dependencies
+      command: npm install --legacy-peer-deps --include=dev
+      args:
+        chdir: "{{ app_dir }}"
+      become_user: ubuntu
+
+    - name: Build Next.js production bundle
+      command: npm run build
+      args:
+        chdir: "{{ app_dir }}"
+      become_user: ubuntu
+      environment:
+        NODE_ENV: production
+        NODE_OPTIONS: "--max-old-space-size=1536"
+
+    - name: Deploy PM2 ecosystem configuration
+      template:
+        src: ../templates/ecosystem.config.js.j2
+        dest: "{{ app_dir }}/ecosystem.config.js"
+        owner: ubuntu
+        group: ubuntu
+        mode: '0644'
+
+    - name: Start or reload application with PM2
+      command: pm2 startOrReload ecosystem.config.js --update-env
+      args:
+        chdir: "{{ app_dir }}"
+      become_user: ubuntu
+
+    - name: Save PM2 process list
+      command: pm2 save
+      become_user: ubuntu
+
+    - name: Configure PM2 startup hook on boot
+      command: env PATH=$PATH:/usr/bin pm2 startup systemd -u ubuntu --hp /home/ubuntu
+      args:
+        creates: /etc/systemd/system/pm2-ubuntu.service
+
+    - name: Deploy Nginx reverse proxy configuration
+      template:
+        src: ../templates/nginx_ledger.conf.j2
+        dest: /etc/nginx/sites-available/ledger-ai
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Enable Nginx site configuration
+      file:
+        src: /etc/nginx/sites-available/ledger-ai
+        dest: /etc/nginx/sites-enabled/ledger-ai
+        state: link
+
+    - name: Remove default Nginx site configuration
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Test Nginx configuration syntax
+      command: nginx -t
+
+    - name: Restart and enable Nginx service
+      service:
+        name: nginx
+        state: restarted
+        enabled: yes
+
+    - name: Wait for application to be available on port 80
+      uri:
+        url: "http://127.0.0.1"
+        status_code: [200, 301, 302, 307]
+        timeout: 30
+      register: app_http_check
+      retries: 5
+      delay: 5
+      until: app_http_check.status in [200, 301, 302, 307]

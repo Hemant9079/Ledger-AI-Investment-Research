@@ -1,0 +1,36 @@
+---
+- name: Step 6 - Automated Self-Healing & Service Recovery
+  hosts: app
+  become: yes
+  vars_files:
+    - ../group_vars/all.yml
+  tasks:
+    - name: Kill any rogue stress-ng processes
+      command: killall -9 stress-ng
+      ignore_errors: yes
+
+    - name: Ensure Nginx is running and enabled
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+    - name: Recover and restart PM2 application cluster
+      command: pm2 startOrReload ecosystem.config.js --update-env
+      args:
+        chdir: "{{ app_dir }}"
+      become_user: ubuntu
+
+    - name: Verify HTTP health endpoint returns 200 OK
+      uri:
+        url: "http://127.0.0.1/api/health"
+        status_code: 200
+        timeout: 15
+      register: health_check
+      retries: 6
+      delay: 5
+      until: health_check.status == 200
+
+    - name: Print recovery confirmation
+      debug:
+        msg: "Ledger AI is fully recovered and operational! Nagios status will turn GREEN (OK) on next check cycle."
